@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BeatTagger - Analizador de Audio</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --dark-bg: #000000;
+            --card-bg: #0f0f0f;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(255, 255, 255, 0.6);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-image: radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0.03) 0%, transparent 70%);
+            position: relative;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg width='100%25' height='100%25' xmlns='http://www.w3.org/2000/svg'%3E%3Cdefs%3E%3Cpattern id='circles' width='150' height='150' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='75' cy='75' r='30' fill='none' stroke='%23e0e0e0' stroke-width='0.5'/%3E%3C/pattern%3E%3C/defs%3E%3Crect width='100%25' height='100%25' fill='url(%23circles)'/%3E%3C/svg%3E");
+            opacity: 0.3;
+            z-index: -1;
+        }
+        
+        .app-container {
+            width: 100%;
+            max-width: 600px;
+            position: relative;
+        }
+        
+        .year-date {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 0.8rem;
+            color: #000;
+            font-weight: 500;
+            text-align: right;
+        }
+        
+        .player-card {
+            width: 100%;
+            height: 200px;
+            background-color: var(--card-bg);
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        
+        .album-cover {
+            width: 160px;
+            height: 160px;
+            border-radius: 80px;
+            overflow: hidden;
+            margin-right: 20px;
+            background-color: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--text-secondary);
+        }
+        
+        .track-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .album-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.4);
+            margin-bottom: 5px;
+        }
+        
+        .track-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .track-artist {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 15px;
+        }
+        
+        .bpm-display {
+            position: absolute;
+            right: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        
+        .bpm-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1;
+            color: var(--text-primary);
+        }
+        
+        #file-input {
+            display: none;
+        }
+        
+        .loader-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 100px;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--text-primary);
+            animation: spin 1s infinite linear;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading .loader-container {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .footer {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-top: 30px;
+            font-size: 0.7rem;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <div class="year-date">
+            <div></div>
+            <span></span>
+        </div>
+        
+        <div class="player-card" id="player-card">
+            <div class="album-cover" id="album-cover">
+                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                <input type="file" id="file-input" accept="audio/*">
+            </div>
+            
+            <div class="track-info">
+                <div class="album-label">Tonalidad</div>
+                <div class="track-title" id="key-display">Selecciona un archivo</div>
+                <div class="track-artist" id="file-name-display">Arrastra o haz clic para analizar</div>
+            </div>
+            
+            <div class="bpm-display">
+                <div class="bpm-value" id="bpm-main">--</div>
+            </div>
+            
+            <div class="loader-container">
+                <div class="loader"></div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="footer-left">TrackID</div>
+            <div class="footer-right">Made by NUBASHI</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const playerCard = document.getElementById('player-card');
+            const albumCover = document.getElementById('album-cover');
+            const fileInput = document.getElementById('file-input');
+            const keyDisplay = document.getElementById('key-display');
+            const fileNameDisplay = document.getElementById('file-name-display');
+            const bpmMain = document.getElementById('bpm-main');
+            
+            let selectedFile = null;
+            
+            // Evento para seleccionar archivo al hacer clic en la portada
+            albumCover.addEventListener('click', () => {
+                fileInput.click();
+            });
+            
+            // Eventos para arrastrar y soltar
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                playerCard.addEventListener(eventName, preventDefaults, false);
+            });
+            
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            
+            ['dragenter', 'dragover'].forEach(eventName => {
+                playerCard.addEventListener(eventName, highlight, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                playerCard.addEventListener(eventName, unhighlight, false);
+            });
+            
+            function highlight() {
+                playerCard.style.boxShadow = '0 0 0 2px var(--text-primary)';
+            }
+            
+            function unhighlight() {
+                playerCard.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.2)';
+            }
+            
+            // Manejar el evento de soltar archivo
+            playerCard.addEventListener('drop', (e) => {
+                const dt = e.dataTransfer;
+                selectedFile = dt.files[0];
+                if (selectedFile) {
+                    analyzeFile(selectedFile);
+                }
+            });
+            
+            // Evento cuando se selecciona un archivo
+            fileInput.addEventListener('change', (e) => {
+                selectedFile = e.target.files[0];
+                if (selectedFile) {
+                    analyzeFile(selectedFile);
+                }
+            });
+            
+            function analyzeFile(file) {
+                // Mostrar información del archivo
+                const fileName = file.name;
+                fileNameDisplay.textContent = fileName;
+                keyDisplay.textContent = 'Analizando...';
+                
+                // Mostrar loader
+                playerCard.classList.add('loading');
+                
+                // Preparar datos para enviar
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                // Enviar archivo para análisis
+                fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Error en la respuesta del servidor');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Ocultar loader
+                    playerCard.classList.remove('loading');
+                    
+                    // Mostrar resultados
+                    const bpm = Math.round(data.bpm);
+                    const key = data.key;
+                    
+                    // Actualizar interfaz
+                    keyDisplay.textContent = key;
+                    bpmMain.textContent = bpm;
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    playerCard.classList.remove('loading');
+                    keyDisplay.textContent = 'Error al analizar';
+                    fileNameDisplay.textContent = 'Intenta de nuevo';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
