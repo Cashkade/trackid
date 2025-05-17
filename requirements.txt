@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+python-dotenv
+spotipy
+librosa
+numpy
+scipy
+pydantic-settings
