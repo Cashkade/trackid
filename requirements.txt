@@ -6,3 +6,4 @@ librosa
 numpy
 scipy
 pydantic-settings
+python-multipart
