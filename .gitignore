@@ -1,0 +1,7 @@
+*.pyc
+   __pycache__/
+   .env
+   venv/
+   temp_*
+   .DS_Store
+   fingerprints/
